@@ -5,7 +5,7 @@ web projects.
 
 ## Pokemon Sleep Recipe Calculator
 
-[See Blade Template](./resources/views/pages/pokemon-sleep.blade.php)
+[See Blade Template](resources/views/pokemon-sleep/pokemon-sleep.blade.php)
 
 This is a little utility for people (like me at time of writing) who are
 relatively new to pokemon sleep and would like some assistance calculating

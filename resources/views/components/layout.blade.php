@@ -1,5 +1,5 @@
-@props(['title', 'skipSiteName' => false])
-<html>
+@props(['title', 'skipSiteName' => false, 'remSize' => null])
+<html @if($remSize) style="font-size: {{ $remSize }}" @endif>
 <head>
     <title>{{ $title ?? '' }}{{ $title && !$skipSiteName ? ' | ' : '' }}{{ !$skipSiteName ? 'Krisalis.@' : '' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])

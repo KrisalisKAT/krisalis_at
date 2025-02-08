@@ -1,4 +1,5 @@
 @props(['title', 'skipSiteName' => false, 'remSize' => null])
+<!doctype html>
 <html @if($remSize) style="font-size: {{ $remSize }}" @endif>
 <head>
     <title>{{ $title ?? '' }}{{ $title && !$skipSiteName ? ' | ' : '' }}{{ !$skipSiteName ? 'Krisalis.@' : '' }}</title>
@@ -58,5 +59,8 @@
         </svg>
     </label>
 </div>
+<svg xmlns="http://www.w3.org/2000/svg">
+    @stack('icon')
+</svg>
 </body>
 </html>

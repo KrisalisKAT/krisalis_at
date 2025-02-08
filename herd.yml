@@ -1,0 +1,14 @@
+name: krisalis
+php: '8.4'
+secured: true
+aliases:
+    - kat
+services:
+    redis:
+        version: 7.0.0
+        port: '${REDIS_PORT}'
+    minio:
+        version: RELEASE.2024-03-05
+        port: '${AWS_ENDPOINT}'
+integrations:
+    forge: {  }

@@ -302,6 +302,7 @@
                         error: false,
                         card: false,
                         isFoil: false,
+                        results: null,
                         ...data
                     }
                     this.cards.unshift(process)
@@ -310,7 +311,6 @@
                 async searchCard(search, isFoil) {
                     const process = this.newCardProcess({
                         search,
-                        results: null,
                         isFoil,
                     })
                     const query = new URLSearchParams()

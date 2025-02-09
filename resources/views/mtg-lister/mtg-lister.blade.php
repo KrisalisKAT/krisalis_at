@@ -320,7 +320,7 @@
                     switch (action) {
                         case '': return
                         case 'Add Another':
-                            this.addAnother(card); break
+                            this.addAnother(this.cards[0]); break
                         case 'Add Card':
                             const match = this.matchSetNum(this.search)
                             this.getCard(match.set, match.num, match.foil); break

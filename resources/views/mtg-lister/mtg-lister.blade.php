@@ -77,7 +77,7 @@
             <div class="flex flex-col gap-y-4 w-fit px-2">
                 <div><a class="btn btn-primary btn-sm"
                         :href="csvDownload"
-                        download="mtg-cards.csv"
+                        :download="csvFileName"
                         x-show="resolvedCards.length">Download CSV</a></div>
                 <ul class="flex flex-col items-stretch">
                     <template x-for="row in cards" :key="row.id">
@@ -174,7 +174,7 @@
                     return mtgSets.filter(set =>
                         (!name || set.name.toLowerCase().includes(name.toLowerCase())) &&
                         (year.length < 4 || set.year === Number(year)) &&
-                        (!size || set.printed_size === Number(size))
+                        (!size || set.card_count === Number(size))
                     )
                 },
                 setName(code) {
@@ -205,7 +205,7 @@
                 get resolvedCards() {
                     return this.cards.filter(c => c.card)
                 },
-                get csvDownload() {
+                get distinctCards() {
                     const cards = this.resolvedCards
                     const cardIndexes = {}
                     const rows = []
@@ -224,15 +224,24 @@
                             })
                         }
                     })
+                    return rows
+                },
+                get csvDownload() {
                     return encodeURI('data:text/csv;charset=utf-8,'
                         + "Count,Name,Edition,Collector Number,Foil\r\n"
-                        + rows.map(row => [
+                        + this.distinctCards.map(row => [
                             row.count,
                             `"${row.name.replace('"', '""')}"`,
                             row.set,
                             row.cn,
                             row.foil ? 'foil' : '',
                         ].join(',')).join("\r\n"));
+                },
+                csvFileName() {
+                    const count = this.resolvedCards.length
+                    if (!count) return 'mtg-list_empty.csv'
+                    const card = this.distinctCards[0].name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    return `mtg-list_${count}_${card}.csv`
                 },
                 displayText(cardRow) {
                     if (cardRow.error) {

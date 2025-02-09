@@ -17,7 +17,7 @@
                     <div class="flex items-center gap-x-4">
                         <input id="searchInput" x-ref="searchInput"
                                class="input input-bordered input-sm flex-grow"
-                               placeholder="eld 299"
+                               :placeholder="placeholder"
                                autofocus
                                x-model="search"/>
                         <button class="btn btn-sm btn-outline">
@@ -152,6 +152,7 @@
     <x-mtgLister.setsData/>
     <script>
         document.addEventListener('alpine:init', () => {
+            const placeholders = ['eld 299', 'fdn 128',]
             Alpine.data('mtgLister', () => ({
                 search: '',
                 showFullSearch: false,
@@ -159,6 +160,7 @@
                 cardNum: '',
                 isFoil: false,
                 cards: [],
+                placeholder: placeholders[Math.floor(Math.random()*placeholders.length)],
                 preview: null,
                 select: null,
                 setLookup: {
@@ -175,7 +177,7 @@
                     return mtgSets.filter(set =>
                         (!name || set.name.toLowerCase().includes(name.toLowerCase())) &&
                         (year.length < 4 || set.year === Number(year)) &&
-                        (!size || set.card_count === Number(size))
+                        (!size || set.card_count === Number(size) || set.printed_size === Number(size))
                     )
                 },
                 setName(code) {

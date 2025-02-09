@@ -151,7 +151,7 @@
     <x-mtgLister.setsData/>
     <script>
         document.addEventListener('alpine:init', () => {
-            const placeholders = ['eld 299', 'fdn 128',]
+            const placeholders = ['eld 299', 'fdn 128','snc 425','woe 287','ncc 13']
             Alpine.data('mtgLister', () => ({
                 search: '',
                 showFullSearch: false,
@@ -320,7 +320,7 @@
                     switch (action) {
                         case '': return
                         case 'Add Another':
-                            this.addAnother(card); break
+                            this.addAnother(this.cards[0]); break
                         case 'Add Card':
                             const match = this.matchSetNum(this.search)
                             this.getCard(match.set, match.num, match.foil); break

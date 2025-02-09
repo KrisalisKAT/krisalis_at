@@ -61,7 +61,7 @@
                                             size="size-6"
                                             display=""
                                             ::class="{
-                                                'opacity-30': row.isFoil,
+                                                'opacity-30': !row.isFoil,
                                                 'text-primary': enterAction === 'Toggle Foil' && rowActionIndex === index
                                             }" />
                                     </button>

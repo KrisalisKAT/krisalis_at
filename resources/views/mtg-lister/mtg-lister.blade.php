@@ -17,6 +17,7 @@
                     <div class="flex items-center gap-x-4">
                         <input id="searchInput" x-ref="searchInput"
                                class="input input-bordered input-sm flex-grow"
+                               placeholder="eld 299"
                                autofocus
                                x-model="search"/>
                         <button class="btn btn-sm btn-outline">

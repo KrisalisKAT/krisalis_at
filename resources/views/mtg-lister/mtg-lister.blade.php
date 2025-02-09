@@ -20,9 +20,8 @@
                                :placeholder="placeholder"
                                autofocus
                                x-model="search"/>
-                        <button class="btn btn-sm btn-outline">
-                            Add Card
-                        </button>
+                        <button class="btn btn-sm btn-outline"
+                                x-text="enterAction || 'Search Card'" :disabled="!enterAction"></button>
                     </div>
                     <span>
                         or search with <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>
@@ -299,21 +298,33 @@
                         foil: Boolean(numberFoil.groups.foil),
                     }
                 },
-                findCard() {
+                get enterAction() {
                     if (!this.search) {
                         if (this.cards.length) {
                             const card = this.cards[0]
                             if (card.card || card.results && !card.error) {
-                                this.addAnother(card)
+                                return 'Add Another'
                             }
                         }
-                        return
+                        return ''
                     }
                     const match = this.matchSetNum(this.search)
                     if (match) {
-                        this.getCard(match.set, match.num, match.foil)
+                        return 'Add Card'
                     } else {
-                        this.searchCard(this.search, this.isFoil)
+                        return 'Search Card'
+                    }
+                },
+                findCard() {
+                    const action = this.enterAction
+                    switch (action) {
+                        case '': return
+                        case 'Add Another':
+                            this.addAnother(card); break;
+                        case 'Add Card':
+                            this.getCard(match.set, match.num, match.foil); break;
+                        case 'Search Card':
+                            this.searchCard(this.search, this.isFoil); break;
                     }
                     this.resetInputs()
                 },

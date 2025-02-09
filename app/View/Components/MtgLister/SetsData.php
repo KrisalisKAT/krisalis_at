@@ -28,7 +28,7 @@ class SetsData extends Component
                     'name',
                     'set_type',
                     'parent_set_code',
-                    'printed_size',
+                    'card_count',
                     'icon_svg_uri',
                 ]) + [
                     'code' => strtolower($set['code']),

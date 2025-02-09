@@ -352,8 +352,8 @@
                     query.set('order', 'released')
                     try {
                         process.results = await this.scryfall(`cards/search?${query.toString()}`)
-                        if (process.results.length === 1) {
-                            process.card = process.results[0]
+                        if (process.results.data.length === 1) {
+                            process.card = process.results.data[0]
                         }
                         console.log(this.cards)
                     } catch (error) {

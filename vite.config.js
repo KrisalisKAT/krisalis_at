@@ -5,13 +5,20 @@ export default defineConfig({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
-            // refresh: true,
+            refresh: true,
         }),
     ],
     server: {
-        hmr: {
-            host: 'localhost',
+        cors: {
+            origin: [
+                'http://krisalis_at.test',
+                'http://krisalis.test',
+                'http://kat.test',
+            ],
         },
+        // hmr: {
+        //     host: 'kat.test',
+        // },
         watch: {
             usePolling: true,
         }

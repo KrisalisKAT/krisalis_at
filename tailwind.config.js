@@ -21,7 +21,7 @@ export default {
         daisyui,
     ],
     daisyui: {
-        themes: ['garden', 'coffee'],
-        darkTheme: 'coffee',
+        themes: ['garden', 'forest'],
+        darkTheme: 'forest',
     },
 };

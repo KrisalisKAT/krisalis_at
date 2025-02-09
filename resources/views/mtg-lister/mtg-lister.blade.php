@@ -10,7 +10,7 @@
         <div class="flex flex-col lg:flex-row items-start gap-y-4 lg:gap-x-10 xl:gap-x-14" x-data="mtgLister">
             <div class="flex flex-col gap-y-2">
                 <form class="flex flex-col gap-2 px-2"
-                      @submit.prevent="findCard()">
+                      @submit.prevent="mainAction(); resetInputs(); $dispatch('reset-set-search')">
                     <label for="searchInput">
                         Enter "SET ###"; append "F" for foil
                     </label>
@@ -19,7 +19,12 @@
                                class="input input-bordered input-sm flex-grow"
                                :placeholder="placeholder"
                                autofocus
-                               x-model="search"/>
+                               autocomplete="off"
+                               x-model="search"
+                               @set-selected.window="search = $event.detail+' '; $el.focus()"
+                               @keyup.down="rowActionIndex = Math.min(rowActionIndex + 1, cards.length - 1)"
+                               @keyup.up="rowActionIndex = Math.max(rowActionIndex - 1, 0)"
+                        />
                         <button class="btn btn-sm btn-outline"
                                 x-text="enterAction || 'Search Card'" :disabled="!enterAction"></button>
                     </div>
@@ -27,52 +32,7 @@
                         or search with <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>
                     </span>
                 </form>
-                <div tabindex="0" class="collapse max-lg:collapse-arrow bg-base-200 lg:collapse-open" x-show="hasSetsData"
-                     x-data="{ open:false }" :class="open ? 'collapse-open' : 'collapse-close'">
-                    <div class="collapse-title cursor-pointer text-lg px-2" @click="open = !open; $nextTick(() => open && $refs.setLookupName.focus())">Set Lookup</div>
-                    <div class="collapse-content px-2">
-                        <div class="gap-2 flex flex-wrap">
-                            <div class="flex flex-col">
-                                <label for="setLookupName" class="mb-2">
-                                    Name
-                                </label>
-                                <input id="setLookupName" x-ref="setLookupName" x-model="setLookup.name"
-                                       class="input input-bordered input-sm ">
-                            </div>
-                            <div class="flex gap-2">
-                                <div class="flex flex-col">
-                                    <label for="setLookupSize" class="mb-2">
-                                        Card count
-                                    </label>
-                                    <input id="setLookup" x-model="setLookup.size"
-                                           class="input input-bordered input-sm w-24">
-                                </div>
-                                <div class="flex flex-col">
-                                    <label for="setLookupYear" class="mb-2">
-                                        Year
-                                    </label>
-                                    <input id="setLookup" x-model="setLookup.year"
-                                           class="input input-bordered input-sm w-24">
-                                </div>
-                            </div>
-                        </div>
-                        <ul x-show="setLookupResults.length" class="mt-4 flex flex-col items-start">
-                            <template x-for="mtgSet in setLookupResults">
-                                <button class="btn btn-link" @click="
-                                    search = mtgSet.code+' ';
-                                    $refs.searchInput.focus();
-                                    resetSetLookup();
-                                    ">
-                                    <span x-text="mtgSet.code" class="w-12 text-left uppercase inline-block"></span>
-                                    <span class="inline-block dark:bg-white/70 p-0.5">
-                                        <img :src="mtgSet.icon_svg_uri" :alt="`${mtgSet.code} set icon`" class="size-6">
-                                    </span>
-                                    <span x-text="`${mtgSet.name} (${mtgSet.year}, ${mtgSet.card_count} cards)`"></span>
-                                </button>
-                            </template>
-                        </ul>
-                    </div>
-                </div>
+                @include('mtg-lister.set-lookup')
             </div>
             <div class="flex flex-col gap-y-4 w-fit px-2">
                 <div><a class="btn btn-primary btn-sm"
@@ -80,9 +40,11 @@
                         :download="csvFileName"
                         x-show="resolvedCards.length">Download CSV</a></div>
                 <ul class="flex flex-col items-stretch">
-                    <template x-for="row in cards" :key="row.id">
+                    <template x-for="(row, index) in cards" :key="row.id">
                         <li class="flex gap-x-6">
-                            <button class="btn btn-sm text-xl" @click="addAnother(row)">+</button>
+                            <button class="btn btn-sm text-xl"
+                                    :class="{ 'btn-outline border-primary': enterAction === 'Add Another' && rowActionIndex === index }"
+                                    @click="addAnother(row)">+</button>
                             <template x-if="row.card">
                                 <div class="flex-grow flex gap-x-4 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
                                     <span class="flex-grow">
@@ -95,8 +57,13 @@
                                     <button class="btn btn-sm size-6 min-h-6 p-0 flex justify-center group tooltip"
                                             :data-tip="row.isFoil ? 'foil' : 'not foil'"
                                             @click="row.isFoil = !row.isFoil">
-                                        <x-icon.sparkles size="size-6"
-                                                         display="" ::class="row.isFoil ? '' : 'opacity-30'" />
+                                        <x-icon.sparkles
+                                            size="size-6"
+                                            display=""
+                                            ::class="{
+                                                'opacity-30': row.isFoil,
+                                                'text-primary': enterAction === 'Toggle Foil' && rowActionIndex === index
+                                            }" />
                                     </button>
                                 </div>
                             </template>
@@ -148,13 +115,13 @@
             </dialog>
         </div>
     </div>
-    <x-mtgLister.setsData/>
+<x-mtgLister.setsData/>
+@push('scripts')
     <script>
         document.addEventListener('alpine:init', () => {
             const placeholders = ['eld 299', 'fdn 128','snc 425','woe 287','ncc 13']
             Alpine.data('mtgLister', () => ({
                 search: '',
-                showFullSearch: false,
                 set: '',
                 cardNum: '',
                 isFoil: false,
@@ -162,23 +129,8 @@
                 placeholder: placeholders[Math.floor(Math.random()*placeholders.length)],
                 preview: null,
                 select: null,
-                setLookup: {
-                    name: '',
-                    year: '',
-                    size: '',
-                },
                 hasSetsData: mtgSets.length,
-                get setLookupResults() {
-                    const {name, year, size} = this.setLookup
-                    if (!name && year.length < 4 && !size) {
-                        return []
-                    }
-                    return mtgSets.filter(set =>
-                        (!name || set.name.toLowerCase().includes(name.toLowerCase())) &&
-                        (year.length < 4 || set.year === Number(year)) &&
-                        (!size || set.card_count === Number(size) || set.printed_size === Number(size))
-                    )
-                },
+                rowActionIndex: 0,
                 setName(code) {
                     if (this.hasSetsData) {
                         const set = mtgSets.find(set => set.code === code.toLowerCase())
@@ -259,12 +211,7 @@
                     this.set = ''
                     this.cardNum = ''
                     this.isFoil = false
-                    this.resetSetLookup()
-                },
-                resetSetLookup() {
-                    this.setLookup.name = ''
-                    this.setLookup.year = ''
-                    this.setLookup.size = ''
+                    this.rowActionIndex = 0
                 },
                 scryfallService: kat.rateLimitedService('https://api.scryfall.com/', 100),
                 async scryfall(...args) {
@@ -299,14 +246,18 @@
                     }
                 },
                 get enterAction() {
+                    let card = null
+                    if (this.cards.length) {
+                        card = this.cards[this.rowActionIndex]
+                    }
                     if (!this.search) {
-                        if (this.cards.length) {
-                            const card = this.cards[0]
-                            if (card.card || card.results && !card.error) {
-                                return 'Add Another'
-                            }
+                        if (card && (card.card || card.results && !card.error)) {
+                            return 'Add Another'
                         }
                         return ''
+                    }
+                    if (this.search.toLowerCase() === 'f' && card?.card) {
+                        return 'Toggle Foil'
                     }
                     const match = this.matchSetNum(this.search)
                     if (match) {
@@ -315,19 +266,21 @@
                         return 'Search Card'
                     }
                 },
-                findCard() {
+                mainAction() {
                     const action = this.enterAction
+
                     switch (action) {
                         case '': return
+                        case 'Toggle Foil':
+                            this.cards[this.rowActionIndex].isFoil = !this.cards[this.rowActionIndex].isFoil; break
                         case 'Add Another':
-                            this.addAnother(this.cards[0]); break
+                            this.addAnother(this.cards[this.rowActionIndex]); break
                         case 'Add Card':
                             const match = this.matchSetNum(this.search)
                             this.getCard(match.set, match.num, match.foil); break
                         case 'Search Card':
                             this.searchCard(this.search, this.isFoil); break
                     }
-                    this.resetInputs()
                 },
                 newCardProcess(data) {
                     const process = {
@@ -379,4 +332,5 @@
             }))
         })
     </script>
+@endpush
 </x-layout>

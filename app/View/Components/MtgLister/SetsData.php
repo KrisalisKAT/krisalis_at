@@ -45,9 +45,13 @@ class SetsData extends Component
     public function render(): View|Closure|string
     {
         return <<<'blade'
-            <script>
-                const mtgSets = {{ Js::from($sets) }}
-            </script>
+@once
+@prepend('scripts')
+    <script>
+        const mtgSets = {{ Js::from($sets) }}
+    </script>
+@endprepend
+@endonce
 blade;
     }
 }

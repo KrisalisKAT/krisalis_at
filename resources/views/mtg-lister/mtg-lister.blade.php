@@ -67,7 +67,7 @@
                                     <span class="inline-block dark:bg-white/70 p-0.5">
                                         <img :src="mtgSet.icon_svg_uri" :alt="`${mtgSet.code} set icon`" class="size-6">
                                     </span>
-                                    <span x-text="`${mtgSet.name} (${mtgSet.year})`"></span>
+                                    <span x-text="`${mtgSet.name} (${mtgSet.year}, ${mtgSet.card_count} cards)`"></span>
                                 </button>
                             </template>
                         </ul>
@@ -109,7 +109,7 @@
                                         Service error
                                     </span>
                                     <a href="#select_modal"
-                                       x-show="row.results"
+                                       x-show="row.results && !row.error"
                                        x-text="`${row.results?.total_cards} cards found`"
                                        @click.prevent="select = row; select_modal.showModal()"></a>
                                 </div>
@@ -279,7 +279,7 @@
                     if (!numberFoil) return null
 
                     const num = Number(numberFoil.groups.number)
-                    if (num > set.printed_size) return null
+                    if (num > set.card_count) return null
 
                     return {
                         set: set.code,

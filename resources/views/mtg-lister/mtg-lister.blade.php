@@ -300,6 +300,15 @@
                     }
                 },
                 findCard() {
+                    if (!this.search) {
+                        if (this.cards.length) {
+                            const card = this.cards[0]
+                            if (card.card || card.results && !card.error) {
+                                this.addAnother(card)
+                            }
+                        }
+                        return
+                    }
                     const match = this.matchSetNum(this.search)
                     if (match) {
                         this.getCard(match.set, match.num, match.foil)

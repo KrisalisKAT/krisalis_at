@@ -27,7 +27,7 @@
                         or search with <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>
                     </span>
                 </form>
-                <div tabindex="0" class="collapse collapse-arrow bg-base-200" x-show="hasSetsData"
+                <div tabindex="0" class="collapse max-lg:collapse-arrow bg-base-200 lg:collapse-open" x-show="hasSetsData"
                      x-data="{ open:false }" :class="open ? 'collapse-open' : 'collapse-close'">
                     <div class="collapse-title cursor-pointer text-lg px-2" @click="open = !open; $nextTick(() => open && $refs.setLookupName.focus())">Set Lookup</div>
                     <div class="collapse-content px-2">

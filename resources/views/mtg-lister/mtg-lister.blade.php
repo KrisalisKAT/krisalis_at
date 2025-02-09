@@ -102,7 +102,7 @@
                             </template>
                             <template x-if="!row.card">
                                 <div class="flex-grow flex gap-x-6 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
-                                    <span class="flex-grow" x-text="row.search"></span>
+                                    <span class="flex-grow" x-text="row.search || `${row.set.toUpperCase()} ${row.cardNum}`"></span>
                                     <x-icon.bolt x-show="!row.error && !row.results" class="animate-pulse" />
                                     <span x-show="row.error" class="text-error">
                                         <x-icon.error size="size-6"/>
@@ -320,11 +320,12 @@
                     switch (action) {
                         case '': return
                         case 'Add Another':
-                            this.addAnother(card); break;
+                            this.addAnother(card); break
                         case 'Add Card':
-                            this.getCard(match.set, match.num, match.foil); break;
+                            const match = this.matchSetNum(this.search)
+                            this.getCard(match.set, match.num, match.foil); break
                         case 'Search Card':
-                            this.searchCard(this.search, this.isFoil); break;
+                            this.searchCard(this.search, this.isFoil); break
                     }
                     this.resetInputs()
                 },

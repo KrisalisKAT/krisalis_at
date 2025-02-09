@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    .kat-link {
+        @apply
+            before:leading-none
+            before:text-lg
+            before:content-['[']
+            before:text-primary
+            before:visited:text-secondary
+            before:inline-block
+            hover:before:-mr-1
+            hover:before:pl-1
+
+            after:leading-none
+            after:text-lg
+            after:content-[']']
+            after:text-primary
+            after:visited:text-secondary
+            after:inline-block
+            hover:after:-ml-1
+            hover:after:pr-1
+    }
+}

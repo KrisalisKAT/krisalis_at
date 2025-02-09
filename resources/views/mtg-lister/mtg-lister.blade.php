@@ -1,17 +1,18 @@
 <x-layout title="MTG Lister">
-    <div class="mx-auto container pa-4 flex flex-col gap-y-4">
-        <div class="card w-full">
+    <div class="mx-auto container max-w-6xl py-2 flex flex-col gap-y-4 sm:px-4">
+        <div class="card w-full px-2">
             <h1 class="font-bold text-2xl">MTG Lister</h1>
-            <p>A little utility for getting a list of card names</p>
+            <p>A little utility for getting a
+                <x-link.pop href="https://moxfield.com/help/importing-collection#import"
+                   class="inline-block md:inline">Moxfield-format CSV</x-link.pop>
+            </p>
         </div>
-        <div class="flex gap-6" x-data="mtgLister">
-            <div class="flex flex-col gap-y-10">
-                <form class="flex flex-col"
+        <div class="flex flex-col lg:flex-row items-start gap-y-4 lg:gap-x-10 xl:gap-x-14" x-data="mtgLister">
+            <div class="flex flex-col gap-y-2">
+                <form class="flex flex-col gap-2 px-2"
                       @submit.prevent="findCard()">
-                    <label for="searchInput" class="mb-2">
-                        Enter "SET ###" or search with <a href="https://scryfall.com/docs/syntax" target="_blank" class="link">
-                            Scryfall syntax <x-icon.newTab />
-                        </a>
+                    <label for="searchInput">
+                        Enter "SET ###"; append "F" for foil
                     </label>
                     <div class="flex items-center gap-x-4">
                         <input id="searchInput" x-ref="searchInput"
@@ -22,47 +23,58 @@
                             Add Card
                         </button>
                     </div>
-                    <span>use "SET ###F" for foils</span>
+                    <span>
+                        or search with <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>
+                    </span>
                 </form>
-                <div class="flex flex-col" x-show="hasSetsData">
-                    <span class="text-lg">Set Lookup</span>
-                    <div class="flex gap-x-2">
-                        <div class="flex flex-col">
-                            <label for="setLookupName" class="mb-2">
-                                Name
-                            </label>
-                            <input id="setLookupName" x-model="setLookup.name"
-                                   class="input input-bordered input-sm ">
+                <div tabindex="0" class="collapse collapse-arrow bg-base-200" x-show="hasSetsData"
+                     x-data="{ open:false }" :class="open ? 'collapse-open' : 'collapse-close'">
+                    <div class="collapse-title cursor-pointer text-lg px-2" @click="open = !open; $nextTick(() => open && $refs.setLookupName.focus())">Set Lookup</div>
+                    <div class="collapse-content px-2">
+                        <div class="gap-2 flex flex-wrap">
+                            <div class="flex flex-col">
+                                <label for="setLookupName" class="mb-2">
+                                    Name
+                                </label>
+                                <input id="setLookupName" x-ref="setLookupName" x-model="setLookup.name"
+                                       class="input input-bordered input-sm ">
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="flex flex-col">
+                                    <label for="setLookupSize" class="mb-2">
+                                        Card count
+                                    </label>
+                                    <input id="setLookup" x-model="setLookup.size"
+                                           class="input input-bordered input-sm w-24">
+                                </div>
+                                <div class="flex flex-col">
+                                    <label for="setLookupYear" class="mb-2">
+                                        Year
+                                    </label>
+                                    <input id="setLookup" x-model="setLookup.year"
+                                           class="input input-bordered input-sm w-24">
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex flex-col">
-                            <label for="setLookupSize" class="mb-2">
-                                Card count
-                            </label>
-                            <input id="setLookup" x-model="setLookup.size"
-                                   class="input input-bordered input-sm w-24">
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="setLookupYear" class="mb-2">
-                                Year
-                            </label>
-                            <input id="setLookup" x-model="setLookup.year"
-                                   class="input input-bordered input-sm w-24">
-                        </div>
+                        <ul x-show="setLookupResults.length" class="mt-4 flex flex-col items-start">
+                            <template x-for="mtgSet in setLookupResults">
+                                <button class="btn btn-link" @click="
+                                    search = mtgSet.code+' ';
+                                    $refs.searchInput.focus();
+                                    resetSetLookup();
+                                    ">
+                                    <span x-text="mtgSet.code" class="w-12 text-left uppercase inline-block"></span>
+                                    <span class="inline-block dark:bg-white/70 p-0.5">
+                                        <img :src="mtgSet.icon_svg_uri" :alt="`${mtgSet.code} set icon`" class="size-6">
+                                    </span>
+                                    <span x-text="`${mtgSet.name} (${mtgSet.year})`"></span>
+                                </button>
+                            </template>
+                        </ul>
                     </div>
-                    <ul x-show="setLookupResults.length" class="mt-4 flex flex-col items-start">
-                        <template x-for="mtgSet in setLookupResults">
-                            <button class="btn btn-link" @click="search = mtgSet.code+' '; $refs.searchInput.focus()">
-                                <span x-text="mtgSet.code" class="w-12 text-left uppercase inline-block"></span>
-                                <span class="inline-block bg-white">
-                                    <img :src="mtgSet.icon_svg_uri" :alt="`${mtgSet.code} set icon`" class="size-6">
-                                </span>
-                                <span x-text="`${mtgSet.name} (${mtgSet.year})`"></span>
-                            </button>
-                        </template>
-                    </ul>
                 </div>
             </div>
-            <div class="flex flex-col gap-y-4 pl-10">
+            <div class="flex flex-col gap-y-4 w-fit px-2">
                 <div><a class="btn btn-primary btn-sm"
                         :href="csvDownload"
                         download="mtg-cards.csv"
@@ -70,21 +82,22 @@
                 <ul class="flex flex-col items-stretch">
                     <template x-for="row in cards" :key="row.id">
                         <li class="flex gap-x-6">
-                            <button class="btn btn-sm" @click="addAnother(row)">+</button>
+                            <button class="btn btn-sm text-xl" @click="addAnother(row)">+</button>
                             <template x-if="row.card">
-                                <div class="flex-grow flex gap-x-6 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
-                                    <a href="#preview_modal" class="flex-grow p-0 tooltip"
+                                <div class="flex-grow flex gap-x-4 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
+                                    <span class="flex-grow">
+                                        <a href="#preview_modal" class="p-0 tooltip"
                                             data-tip="view card"
                                             x-text="row.card.name"
                                             @click.prevent="preview = row.card; preview_modal.showModal()"></a>
+                                    </span>
+                                    <span x-text="`${row.card.set.toUpperCase()} ${row.card.collector_number.padStart(3, '0')}`"></span>
                                     <button class="btn btn-sm size-6 min-h-6 p-0 flex justify-center group tooltip"
                                             :data-tip="row.isFoil ? 'foil' : 'not foil'"
-                                            :class="row.isFoil ? '' : 'btn-outline'"
                                             @click="row.isFoil = !row.isFoil">
                                         <x-icon.sparkles size="size-6"
-                                             display="" ::class="row.isFoil ? 'inline' : 'hidden group-hover:inline'" />
+                                                         display="" ::class="row.isFoil ? '' : 'opacity-30'" />
                                     </button>
-                                    <span x-text="`${row.card.set.toUpperCase()} ${row.card.collector_number.padStart(3, '0')}`"></span>
                                 </div>
                             </template>
                             <template x-if="!row.card">
@@ -97,11 +110,11 @@
                                     </span>
                                     <a href="#select_modal"
                                        x-show="row.results"
-                                       x-text="`${row.results.total_cards} cards found`"
+                                       x-text="`${row.results?.total_cards} cards found`"
                                        @click.prevent="select = row; select_modal.showModal()"></a>
                                 </div>
                             </template>
-                            <button class="btn btn-sm" @click="remove(row)">-</button>
+                            <button class="btn btn-sm text-xl" @click="remove(row)">-</button>
                         </li>
                     </template>
                 </ul>
@@ -174,9 +187,9 @@
                     return code.toUpperCase()
                 },
                 addAnother(row) {
-                    const {isFoil, card} = row
+                    const {search, isFoil, card, results = null} = row
                     this.newCardProcess({
-                        isFoil, card
+                        search, isFoil, card, results
                     })
                 },
                 indexOfCard(row) {
@@ -235,6 +248,9 @@
                     this.set = ''
                     this.cardNum = ''
                     this.isFoil = false
+                    this.resetSetLookup()
+                },
+                resetSetLookup() {
                     this.setLookup.name = ''
                     this.setLookup.year = ''
                     this.setLookup.size = ''

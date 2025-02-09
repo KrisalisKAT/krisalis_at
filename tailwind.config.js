@@ -21,7 +21,15 @@ export default {
         daisyui,
     ],
     daisyui: {
-        themes: ['garden', 'forest'],
+        themes: [
+            'garden',
+            {
+                forest: {
+                    ...require("daisyui/src/theming/themes")['forest'],
+                    '--rounded-btn': '0.5rem',
+                },
+            },
+        ],
         darkTheme: 'forest',
     },
 };

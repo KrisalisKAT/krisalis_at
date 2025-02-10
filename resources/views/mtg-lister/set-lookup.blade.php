@@ -3,7 +3,7 @@
      @reset-set-search.window="resetSetLookup()">
     <div class="collapse-title cursor-pointer text-lg px-2" @click="open = !open; $nextTick(() => open && $refs.setLookupName.focus())">Set Lookup</div>
     <div class="collapse-content px-2">
-        <div class="gap-2 flex flex-wrap">
+        <div class="gap-2 flex max-lg:flex-wrap">
             <div class="flex flex-col">
                 <label for="setLookupName" class="mb-2">
                     Name

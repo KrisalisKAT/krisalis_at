@@ -9,7 +9,7 @@
                 <form class="flex flex-col gap-2 px-2"
                       @submit.prevent="mainAction($dispatch)">
                     <label for="searchInput">
-                        Enter "SET ###"; append "F" for foil
+                        Enter "SET ###"
                     </label>
                     <div class="flex items-center gap-x-4">
                         <label class="input input-bordered input-sm flex items-center gap-x-1">
@@ -31,20 +31,19 @@
                                 x-text="actionLabel" :disabled="!action.do"></button>
                     </div>
                     <span>
-                        or search with <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>
+                        <a href="#how_to" class="kat-link" @click.prevent="how_to.showModal()">
+                            How To<span :class="{'text-primary': action.do === '?'}">?</span>
+                        </a>
                     </span>
                 </form>
                 @include('mtg-lister.set-lookup')
             </div>
             <div class="flex flex-col gap-y-4 w-fit px-2">
-                <div class="flex flex-wrap gap-4">
+                <div>
                     <a class="btn btn-primary btn-sm"
                        :href="csvDownload"
                        :download="csvFileName"
                        :disabled="!resolvedCards.length">Download CSV</a>
-                    <x-link.pop href="https://moxfield.com/help/importing-collection#import"
-                                class="inline-block md:inline">Moxfield CSV format
-                    </x-link.pop>
                 </div>
                 <ul class="flex flex-col items-stretch">
                     <template x-for="(row, index) in cards" :key="row.id">
@@ -116,7 +115,54 @@
             <div
                 @view-card.window="preview = $event.detail; preview_modal.showModal()"
                 @view-results.window="select = $event.detail; select_modal.showModal(); $nextTick(() => select_modal.querySelector('button').focus())"
+                @open-help.window="how_to.showModal()"
             ></div>
+            <dialog id="how_to" class="modal">
+                <div class="modal-box w-5/6 max-w-3xl">
+                    <div class="flex flex-col gap-y-2">
+                        <h2 class="text-xl">How To Use MTG Lister</h2>
+                        <h3 class="text-lg">The Idea</h3>
+                        <p>I wanted to inventory my collection on Moxfield, but everything else I tried to use for that felt too damn slow.
+                            I figured the easiest way to build an inventory would be to enter set code and card number.
+                            The problem is that <x-link.pop href="https://moxfield.com/help/importing-collection#import"
+                                                            class="inline-block md:inline">Moxfield CSV format</x-link.pop>
+                            wants the exact card name in addition to those, which is a lot more typing.<br>
+                            But I'm a web developer; I figured I could make it. And here it is!
+                        </p>
+                        <h3 class="text-lg">Basic Usage</h3>
+                        <p>Type in a set code, a space, and a card number. The action button will display "Add Card".
+                            Hit enter to fetch card details from Scryfall and populate it into the list.<br>
+                            For some cards that's not an option for various reasons, so the search box also accepts
+                            <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>.
+                            When multiple results are returned, you can view the results and select your card.
+                        </p>
+                        <h3 class="text-lg">Commands</h3>
+                        <p>The point of this is speedy entry and I find keyboard commands a lot faster than using a mouse or touchpad,
+                            so I built in a bunch of controls using just the keyboard.
+                        </p>
+                        <ul class="list-disc">
+                            <li><span class="font-bold text-primary">[Up] / [Down] arrows</span> - Move the list cursor.<br>
+                                The cursor resets to the top of the list after any other command.
+                            </li>
+                            <li><span class="font-bold text-primary">[Enter]</span> - Add another</li>
+                            <li><span class="font-bold text-primary">F + [Enter]</span> - Toggle Foil status</li>
+                            <li><span class="font-bold text-primary">V + [Enter]</span> - View the card, or the search results</li>
+                            <li><span class="font-bold text-primary">X + [Enter]</span> - Remove the row</li>
+                            <li><span class="font-bold text-primary">&lt; + Set Code + [Enter]</span> - Lock to the given set code.<br>
+                                e.g. "&lt;blb" will lock to Bloomburrow. Then you can just enter the card number.<br>
+                                Searches will also restrict to the set (appending "set:" and the code to your search)
+                            </li>
+                            <li><span class="font-bold text-primary">&lt; + [Enter]</span> - Toggle Set Code Lock.<br>
+                                Lock or unlock the set code. If locking, will get the set code from the list</li>
+                            <li><span class="font-bold text-primary">? + [Enter]</span> - Open this help modal</li>
+                            <li><span class="font-bold text-primary">[Esc]</span> - Close modals</li>
+                        </ul>
+                    </div>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                    <button>close</button>
+                </form>
+            </dialog>
             <dialog id="preview_modal" class="modal">
                 <template x-if="preview">
                     <div class="modal-box p-0 flex flex-col items-center">
@@ -321,6 +367,8 @@
                                 case 'x':
                                     if (row) return {do: 'x', row}
                                     break
+                                case '?':
+                                    return {do: '?'}
                             }
                         }
 
@@ -351,6 +399,7 @@
                             case 'l+':  return 'Lock Set: '+this.action.setCode
                             case 'l-':  return 'Unlock Set'
                             case 'x':   return 'Remove Row'
+                            case '?':   return 'Open Help'
                         }
                     },
                     mainAction(dispatch) {
@@ -358,22 +407,22 @@
                         switch (action.do) {
                             case null: return
                             case '+':
-                                this.getCard(action.match.set, action.match.num, action.match.foil);
+                                this.getCard(action.match.set, action.match.num, action.match.foil)
                                 break
                             case 's':
-                                this.searchCard(action.search);
+                                this.searchCard(action.search)
                                 break
                             case '++':
-                                this.addAnother(action.row);
+                                this.addAnother(action.row)
                                 break
                             case 'vC':
-                                dispatch('view-card', action.row.card);
+                                dispatch('view-card', action.row.card)
                                 break
                             case 'vR':
-                                dispatch('view-results', action.row);
+                                dispatch('view-results', action.row)
                                 break
                             case 'f':
-                                action.row.isFoil = !action.row.isFoil;
+                                action.row.isFoil = !action.row.isFoil
                                 break
                             case 'l+':
                                 this.setCodeLock = action.setCode
@@ -382,7 +431,10 @@
                                 this.setCodeLock = null
                                 break
                             case 'x':
-                                this.remove(action.row);
+                                this.remove(action.row)
+                                break
+                            case '?':
+                                dispatch('open-help')
                                 break
                         }
 

@@ -12,18 +12,23 @@
                         Enter "SET ###"; append "F" for foil
                     </label>
                     <div class="flex items-center gap-x-4">
-                        <input id="searchInput" x-ref="searchInput"
-                               class="input input-bordered input-sm flex-grow"
-                               :placeholder="placeholder"
-                               autofocus
-                               autocomplete="off"
-                               x-model="search"
-                               @set-selected.window="search = $event.detail+' '; $el.focus()"
-                               @keyup.down="rowActionIndex = Math.min(rowActionIndex + 1, cards.length - 1)"
-                               @keyup.up="rowActionIndex = Math.max(rowActionIndex - 1, 0)"
-                        />
+                        <label class="input input-bordered input-sm flex items-center gap-x-1">
+                            <span class="text-secondary -ml-2" x-show="setCodeLock">
+                                &lt;<span x-text="setCodeLock"></span>&gt;
+                            </span>
+                            <input id="searchInput" x-ref="searchInput"
+                                   class="grow"
+                                   :placeholder="setCodeLock ? lockedSetPlaceholder : placeholder"
+                                   autofocus
+                                   autocomplete="off"
+                                   x-model="search"
+                                   @set-selected.window="search = $event.detail+' '; $el.focus()"
+                                   @keyup.down="rowActionIndex = Math.min(rowActionIndex + 1, cards.length - 1)"
+                                   @keyup.up="rowActionIndex = Math.max(rowActionIndex - 1, 0)"
+                            />
+                        </label>
                         <button class="btn btn-sm btn-outline"
-                                x-text="enterAction || 'Search Card'" :disabled="!enterAction"></button>
+                                x-text="actionLabel" :disabled="!action.do"></button>
                     </div>
                     <span>
                         or search with <x-link.pop href="https://scryfall.com/docs/syntax">Scryfall syntax</x-link.pop>
@@ -46,16 +51,16 @@
                         <li class="flex gap-x-6">
                             <button class="btn btn-sm text-xl tooltip flex"
                                     data-tip="Add Another"
-                                    :class="{ 'btn-outline border-primary': enterAction === 'Add Another' && rowActionId === row.id }"
-                                    :disabled="!row.card && !row.results?.length"
+                                    :class="{ 'btn-outline border-primary': action.do === '++' && rowActionId === row.id }"
+                                    :disabled="!row.card && !row.results"
                                     @click="addAnother(row)"><span class="-mt-1.5">+</span></button>
                             <template x-if="row.card">
                                 <div
-                                    class="flex-grow flex gap-x-4 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
-                                    <span class="flex-grow">
+                                    class="grow flex gap-x-4 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
+                                    <span class="grow">
                                         <a href="#preview_modal" class="p-0 tooltip"
                                            data-tip="view card (v)"
-                                           :class="{ 'border-b border-primary -mb-px': enterAction === 'View Card' && rowActionId === row.id }"
+                                           :class="{ 'border-b border-primary -mb-px': action.do === 'vC' && rowActionId === row.id }"
                                            @click.prevent="$dispatch('view-card', row.card)">
                                             <span class="inline-block"
                                                   x-text="row.card.name.split('//')[0]+(row.card.name.split('//').length > 1 ? ' //' : '')"></span>
@@ -74,7 +79,7 @@
                                             :data-tip="row.isFoil ? 'foil' : 'not foil'"
                                             :class="{
                                                 'opacity-30': !row.isFoil,
-                                                'text-primary': enterAction === 'Toggle Foil' && rowActionId === row.id
+                                                'text-primary': action.do === 'f' && rowActionId === row.id
                                             }"
                                             @click="row.isFoil = !row.isFoil">
                                         <x-icon.sparkles size="size-5"/>
@@ -84,8 +89,8 @@
                             </template>
                             <template x-if="!row.card">
                                 <div
-                                    class="flex-grow flex gap-x-6 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
-                                    <span class="flex-grow"
+                                    class="grow flex gap-x-6 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
+                                    <span class="grow"
                                           x-text="row.search || `${row.set.toUpperCase()} ${row.cardNum}`"></span>
                                     <x-icon.bolt x-show="!row.error && !row.results" class="animate-pulse"/>
                                     <span x-show="row.error" class="text-error">
@@ -93,8 +98,8 @@
                                         Service error
                                     </span>
                                     <a href="#select_modal"
-                                       x-show="row.results && !row.error"
-                                       :class="{ 'border-b border-primary -mb-px': enterAction === 'View Results' && rowActionId === row.id }"
+                                       x-show="row.results"
+                                       :class="{ 'border-b border-primary -mb-px': action.do === 'vR' && rowActionId === row.id }"
                                        @click.prevent="$dispatch('view-results', row)">
                                         <span x-text="`${row.results?.total_cards} cards found`"></span>
                                         <sup>v</sup>
@@ -102,7 +107,7 @@
                                 </div>
                             </template>
                             <button class="btn btn-sm text-xl flex"
-                                    :class="{ 'btn-outline border-primary': enterAction === 'Remove Row' && rowActionId === row.id }"
+                                    :class="{ 'btn-outline border-primary': action.do === 'x' && rowActionId === row.id }"
                                     @click="remove(row)"><span class="-mt-1.5">x</span></button>
                         </li>
                     </template>
@@ -125,7 +130,7 @@
             </dialog>
             <dialog id="select_modal" class="modal">
                 <div class="modal-box p-0 overflow-x-auto max-w-[90vw] w-fit">
-                    <template x-if="select && select.results">
+                    <template x-if="select?.results">
                         <div class="flex gap-x-4 w-full items-stretch p-2">
                             <template x-for="result in select.results.data">
                                 <button class="flex-shrink-0 flex flex-col items-center p-2 rounded-3xl"
@@ -159,6 +164,7 @@
                     select: null,
                     hasSetsData: mtgSets.length,
                     rowActionIndex: 0,
+                    setCodeLock: null,
                     get rowActionId() {
                         return this.cards[this.rowActionIndex].id
                     },
@@ -167,6 +173,14 @@
                             return mtgSets.find(set => set.code === code.toLowerCase()) || null
                         }
                         return null
+                    },
+                    get lockedSetPlaceholder() {
+                        return this.setCodeLock ?
+                            Math.floor(Math.random() * this.lockedSet.card_count) + 1
+                            : this.placeholder
+                    },
+                    get lockedSet() {
+                        return this.setCodeLock ? this.setByCode(this.setCodeLock) : null
                     },
                     setName(code) {
                         const set = this.setByCode(code)
@@ -179,7 +193,7 @@
                             : card.collector_number
                     },
                     addAnother(row) {
-                        const {search, isFoil, card, results = null} = row
+                        const {search, isFoil, card, results} = row
                         this.newCardProcess({
                             search, isFoil, card, results
                         })
@@ -248,7 +262,6 @@
                         this.search = ''
                         this.set = ''
                         this.cardNum = ''
-                        this.isFoil = false
                         this.rowActionIndex = 0
                     },
                     scryfallService: kat.rateLimitedService('https://api.scryfall.com/', 100),
@@ -268,7 +281,7 @@
                         const parts = search.toLowerCase().split(' ')
                         if (parts.length !== 2) return null
 
-                        const set = mtgSets.find(set => set.code === parts[0])
+                        const set = this.setByCode(parts[0])
                         if (!set) return null
 
                         const numberFoil = parts[1].match(/(?<number>\d{1,4})(?<foil>f?)/i)
@@ -283,65 +296,93 @@
                             foil: Boolean(numberFoil.groups.foil),
                         }
                     },
-                    get enterAction() {
+                    get action() {
                         const row = this.cards[this.rowActionIndex] || null
+                        const card = row?.card
                         const search = this.search.toLowerCase()
-                        if (row) {
-                            if (row.card) {
-                                switch (search) {
-                                    case 'v':
-                                        return 'View Card'
-                                    case 'f':
-                                        return 'Toggle Foil'
-                                }
-                            }
-                            if (row.card || (row.results && !row.error)) {
-                                switch (search) {
-                                    case '':
-                                        return 'Add Another'
-                                    case 'v':
-                                        return 'View Results'
-                                }
-                            }
+
+                        if (!search) {
+                            if (card || row?.results) return {do: '++', row}
+                            return {do: null}
+                        }
+
+                        if (search.length === 1) {
                             switch (search) {
+                                case 'v':
+                                    if (row) return {do: card ? 'vC' : 'vR', row}
+                                    break
+                                case 'f':
+                                    if (card) return {do: 'f', row}
+                                    break
+                                case '<':
+                                    if (this.setCodeLock) return {do: 'l-'}
+                                    if (card) return {do: 'l+', setCode: card.set}
+                                    break
                                 case 'x':
-                                    return 'Remove Row'
+                                    if (row) return {do: 'x', row}
+                                    break
                             }
                         }
-                        if (!this.search) {
-                            return ''
+
+                        if (search.slice(0, 1) === '<' && this.setByCode(search.slice(1))) {
+                            return {do: 'l+', setCode: search.slice(1)}
                         }
-                        const match = this.matchSetNum(this.search)
-                        return match ? 'Add Card' : 'Search Card'
+
+                        const match = this.matchSetNum(this.setCodeLock ?
+                            `${this.setCodeLock} ${search}`
+                            : this.search)
+                        if (match) {
+                            return {do: '+', match}
+                        }
+                        if (this.setCodeLock) {
+                            return {do: 's', search: `${search} set:${this.setCodeLock}`}
+                        }
+                        return {do: 's', search}
+                    },
+                    get actionLabel() {
+                        switch(this.action.do) {
+                            case null:
+                            case 's':   return 'Search Card'
+                            case '+':   return 'Add Card'
+                            case '++':  return 'Add Another'
+                            case 'vC':  return 'View Card'
+                            case 'vR':  return 'View Results'
+                            case 'f':   return 'Toggle Foil'
+                            case 'l+':  return 'Lock Set: '+this.action.setCode
+                            case 'l-':  return 'Unlock Set'
+                            case 'x':   return 'Remove Row'
+                        }
                     },
                     mainAction(dispatch) {
-                        const action = this.enterAction
-                        const row = this.cards[this.rowActionIndex] || null
-
-                        switch (action) {
-                            case '':
-                                return
-                            case 'Toggle Foil':
-                                row.isFoil = !row.isFoil;
+                        const action = this.action
+                        switch (action.do) {
+                            case null: return
+                            case '+':
+                                this.getCard(action.match.set, action.match.num, action.match.foil);
                                 break
-                            case 'Add Another':
-                                this.addAnother(row);
+                            case 's':
+                                this.searchCard(action.search);
                                 break
-                            case 'Add Card':
-                                const match = this.matchSetNum(this.search)
-                                this.getCard(match.set, match.num, match.foil);
+                            case '++':
+                                this.addAnother(action.row);
                                 break
-                            case 'View Card':
-                                dispatch('view-card', row.card);
+                            case 'vC':
+                                dispatch('view-card', action.row.card);
                                 break
-                            case 'View Results':
-                                dispatch('view-results', row);
+                            case 'vR':
+                                dispatch('view-results', action.row);
                                 break
-                            case 'Remove Row':
-                                this.remove(row);
+                            case 'f':
+                                action.row.isFoil = !action.row.isFoil;
                                 break
-                            case 'Search Card':
-                                this.searchCard(this.search, this.isFoil);
+                            case 'l+':
+                                this.setCodeLock = action.setCode
+                                break
+                            case 'l-':
+                                this.setCodeLock = null
+                                break
+                            case 'x':
+                                this.remove(action.row);
                                 break
                         }
 
@@ -360,24 +401,21 @@
                         this.cards.unshift(process)
                         return this.cards[0]
                     },
-                    async searchCard(search, isFoil) {
-                        const process = this.newCardProcess({
-                            search,
-                            isFoil,
-                        })
+                    async searchCard(search) {
+                        const process = this.newCardProcess({search})
                         const query = new URLSearchParams()
                         query.set('q', search)
                         query.set('unique', 'prints')
                         query.set('order', 'released')
                         try {
-                            process.results = await this.scryfall(`cards/search?${query.toString()}`)
-                            if (process.results.data.length === 1) {
-                                process.card = process.results.data[0]
+                            const results = await this.scryfall(`cards/search?${query.toString()}`)
+                            if (results.total_cards === 1) {
+                                process.card = results.data[0]
+                            } else {
+                                process.results = results
                             }
-                            console.log(this.cards)
                         } catch (error) {
                             process.error = true
-                            process.results = []
                             console.error({search, error})
                         }
                     },

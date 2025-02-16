@@ -48,7 +48,7 @@ class SetsData extends Component
 @once
 @prepend('scripts')
     <script>
-        const mtgSets = {{ Js::from($sets) }}
+        const mtgSets = @json($sets)
     </script>
 @endprepend
 @endonce

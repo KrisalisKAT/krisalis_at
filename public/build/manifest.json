@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-IrBFqCpv.css",
+    "file": "assets/app-CgBs-J0q.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -8,6 +8,12 @@
     "file": "assets/app-CdLko61c.js",
     "name": "app",
     "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/mtg-lister.js": {
+    "file": "assets/mtg-lister-CkgU6-1q.js",
+    "name": "mtg-lister",
+    "src": "resources/js/mtg-lister.js",
     "isEntry": true
   }
 }

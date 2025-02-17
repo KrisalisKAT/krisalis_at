@@ -674,7 +674,6 @@ document.addEventListener('alpine:init', () => {
                     await this.updateRow(row, {card: results[0]})
                 } else {
                     await this.updateRow(row, {results})
-                    row.search.results = results
                 }
             } catch (error) {
                 row.error = error

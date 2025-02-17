@@ -4,13 +4,13 @@ import {initDb, promiseRequest} from './db.js'
 /** @typedef {{set: string, num: number}} CardRef */
 /** @typedef {CardRef & {readonly card: mtgCard|null}} CardPop */
 /** @typedef {{q: string, results: CardRef[]|CardPop[]|null}} CardSearch */
-/** @typedef {{key?: number|null, listName?: string|null, search?: {q: string, results: CardRef[]|null}|null, card?: CardRef|null, foil?: boolean}} dbRowRecordable */
+/** @typedef {{key?: number|null, listName?: string|null, search?: {q: string, results?: CardRef[]|null}|null, card?: CardRef|null, foil?: boolean}} dbRowRecordable */
 /** @typedef {{key?: number, listName?: string, search?: CardSearch, card: CardRef|CardPop|null, foil: boolean}} RowRecord */
 /** @typedef {RowRecord & {card: CardPop|null, error: *, hasError: boolean}} ActiveRowRecord */
 /** @typedef {{name: string, set_type: string, parent_set_code: string|null, printed_size: number|null, card_count: number, icon_svg_uri: string, code: string, year: number|null}} mtgSet */
 /** @typedef {{get(CardRef): (mtgCard|null), set(mtgCard): Promise<void>, remember((mtgCard|null)): mtgCard|null, recall(CardRef): Promise<mtgCard|null>}} cacheCards */
 /** @typedef {{rows: ActiveRowRecord[], add(dbRowRecordable): Promise<ActiveRowRecord>, remove(RowRecord): Promise<void>, clear(): Promise<void>, update(RowRecord): Promise<void>, readonly byNew: ActiveRowRecord[], populate(): Promise<void>}} cacheList */
-/** @typedef {{cards: cacheCards, getLists(): Promise<string[]>, list(string): cacheList}} MtgListerApp */
+/** @typedef {{cards: cacheCards, cardPop(CardRef): CardPop, getLists(): Promise<string[]>, list(string): cacheList}} MtgListerApp */
 
 /** @returns {MtgListerApp} */
 function mtgLister() {
@@ -184,11 +184,7 @@ function mtgLister() {
          */
         remember(card) {
             if (card) {
-                const key = cardKey(card)
-                cards[key] = card
-                Alpine.effect(() => {
-                    console.log(cards[key].name + ' remembered')
-                })
+                cards[cardKey(card)] = card
             }
             return card
         },
@@ -251,8 +247,8 @@ function mtgLister() {
             async add(row) {
                 const rowRecord = await db.lists.addRow(row, name)
                 const newRow = invigorateRow(rowRecord)
-                this.rows.push(newRow)
-                return newRow
+                const index = this.rows.push(newRow)
+                return this.rows[index - 1]
             },
             /**
              * @param row {RowRecord}
@@ -314,6 +310,7 @@ function mtgLister() {
 
     return {
         cards,
+        cardPop,
         getLists,
         list,
     }
@@ -383,7 +380,12 @@ document.addEventListener('alpine:init', () => {
          */
         setByCode(code) {
             if (this.hasSetsData) {
-                return mtgSets.find(set => set.code === code.toLowerCase()) || null
+                try {
+                    return mtgSets.find(set => set.code === code.toLowerCase()) || null
+                } catch (e) {
+                    console.error(code, e)
+                    return null
+                }
             }
             return null
         },
@@ -655,7 +657,7 @@ document.addEventListener('alpine:init', () => {
          * @returns {Promise<void>}
          */
         async searchCard(search) {
-            const row = await this.list.add({search})
+            const row = await this.list.add({search: {q: search}})
             const query = new URLSearchParams()
             query.set('q', search)
             query.set('unique', 'prints')
@@ -663,10 +665,16 @@ document.addEventListener('alpine:init', () => {
 
             try {
                 let results = await this.scryfall(`cards/search?${query.toString()}`)
-                results = results.data.map(card => this.prepareScryfallCard(card))
-                results.forEach(card => app.cards.set(card))
-                if (row.results.length === 1) {
-                    row.card = row.results[0]
+                /** @type CardPop[] */
+                results = await Promise.all(results.data.map(card => {
+                    card = this.prepareScryfallCard(card)
+                    return app.cards.set(card).then(() => app.cardPop(card))
+                }))
+                if (results.length === 1) {
+                    await this.updateRow(row, {card: results[0]})
+                } else {
+                    await this.updateRow(row, {results})
+                    row.search.results = results
                 }
             } catch (error) {
                 row.error = error
@@ -685,12 +693,16 @@ document.addEventListener('alpine:init', () => {
         /**
          * @param {ActiveRowRecord} row
          * @param {CardRef|null} card
+         * @param {CardRef[]|null} results
          * @param {boolean|null} foil
          * @returns {Promise<void>}
          */
-        async updateRow(row, {card = null, foil = null}) {
+        async updateRow(row, {card = null, results = null, foil = null}) {
             if (card) {
                 row.card = card
+                row.search = undefined
+            } else if (results) {
+                row.search.results = results
             }
             if (foil) {
                 row.foil = foil

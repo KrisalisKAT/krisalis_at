@@ -190,6 +190,7 @@
                         <div class="flex gap-x-4 w-full items-stretch p-2">
                             <template x-for="result in select.search.results">
                                 <button class="flex-shrink-0 flex flex-col items-center p-2 rounded-3xl"
+                                        :key="result.card.setNum"
                                         @click="updateRow(select, {card: result}).then(); select_modal.close(); $refs.searchInput.focus()">
                                     <img :src="result.card.imageUri" :alt="result.card.name" class="max-h-[75vh]">
                                     <span x-text="`${setName(result.set)} ${padCardNum(result.num)}`"></span>

@@ -101,7 +101,7 @@
                                     class="grow flex gap-x-6 px-2 py-1 items-center border border-primary border-b-0 rounded-t-lg">
                                     <span class="grow"
                                           x-text="row.search?.q || `${row.card?.set.toUpperCase()} ${row.card?.num}`"></span>
-                                    <x-icon.bolt x-show="!row.error && !row.results" class="animate-pulse"/>
+                                    <x-icon.bolt x-show="!row.error && !row.search?.results" class="animate-pulse"/>
                                     <span x-show="row.hasError" class="text-error">
                                         <x-icon.error size="size-6"/>
                                         Service error
@@ -190,9 +190,9 @@
                         <div class="flex gap-x-4 w-full items-stretch p-2">
                             <template x-for="result in select.search.results">
                                 <button class="flex-shrink-0 flex flex-col items-center p-2 rounded-3xl"
-                                        @click="updateRow(select, {card: result}); select_modal.close(); $refs.searchInput.focus()">
-                                    <img :src="result.imageUri" :alt="result.name" class="max-h-[75vh]">
-                                    <span x-text="`${setName(result.set)} ${padCardNum(result)}`"></span>
+                                        @click="updateRow(select, {card: result}).then(); select_modal.close(); $refs.searchInput.focus()">
+                                    <img :src="result.card.imageUri" :alt="result.card.name" class="max-h-[75vh]">
+                                    <span x-text="`${setName(result.set)} ${padCardNum(result.num)}`"></span>
                                 </button>
                             </template>
                         </div>

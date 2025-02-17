@@ -737,8 +737,8 @@ document.addEventListener('alpine:init', () => {
          * @returns {mtgCard}
          */
         prepareScryfallCard(card) {
-            const {name, set, collector_number, finishes, image_status, image_uris} = card
-            const imageUri = image_uris.png || null
+            const {name, set, collector_number, finishes, image_status, image_uris = null, card_faces = []} = card
+            const imageUri = image_uris?.png || card_faces[0]?.image_uris?.png || null
             return {
                 name,
                 set,

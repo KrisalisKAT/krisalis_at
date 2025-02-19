@@ -193,7 +193,7 @@
                                         :key="result.card.setNum"
                                         @click="updateRow(select, {card: result}).then(); select_modal.close(); $refs.searchInput.focus()">
                                     <img :src="result.card.imageUri" :alt="result.card.name" class="max-h-[75vh]">
-                                    <span x-text="`${setName(result.set)} ${padCardNum(result.num)}`"></span>
+                                    <span x-text="`${setName(result.set)} ${padCardNum(result)}`"></span>
                                 </button>
                             </template>
                         </div>

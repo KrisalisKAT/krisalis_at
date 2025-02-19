@@ -12,6 +12,11 @@ export default defineConfig({
             refresh: true,
         }),
     ],
+    resolve: {
+        alias: {
+            'js': '/resources/js',
+        },
+    },
     server: {
         cors: {
             origin: [

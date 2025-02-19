@@ -11,7 +11,6 @@ export function mtgListDb() {
         db.createObjectStore('options', {keyPath: 'name'})
     })
 
-    /** @type {{save(mtgCard): Promise<void>, get(CardRef): Promise<mtgCard|null>}} */
     const cards = {
         async save(card) {
             await this.saveAll([card])
@@ -76,7 +75,7 @@ export function mtgListDb() {
 
         return {
             key: key || undefined,
-            listName: listName || undefined,
+            listName: listName === null ? undefined : listName,
             search: search ? {q: search.q, results: search.results?.map(asCardRef)} : undefined,
             card: row.card ? asCardRef(row.card) : null,
             foil,
@@ -89,11 +88,23 @@ export function mtgListDb() {
          * @returns {Promise<string[]>}
          */
         async getLists() {
-            return promiseRequest(
-                (await db).transaction(['cardList'])
-                    .objectStore('cardList')
-                    .index('listName')
-                    .getAllKeys())
+            const mtgDb = await db
+            const lists = []
+            await new Promise((resolve) => {
+                const cardListDb = mtgDb.transaction(['cardList']).objectStore('cardList')
+                const list = cardListDb.index('listName')
+                list.openKeyCursor(null, 'nextunique').onsuccess = (event) => {
+                    /** @type IDBCursor */
+                    const cursor = event.target.result
+                    if (cursor) {
+                        lists.push(cursor.key)
+                        cursor.continue()
+                    } else {
+                        resolve()
+                    }
+                }
+            })
+            return lists
         },
         /**
          * @param name {string}
@@ -103,8 +114,9 @@ export function mtgListDb() {
             return promiseRequest(
                 (await db).transaction(['cardList'])
                     .objectStore('cardList')
-                    .index('listName')
-                    .getAll(name))
+                    // .index('listName')
+                    // .getAll(name))
+                    .getAll())
         },
         /**
          * @param row {dbRowRecordable}
@@ -112,22 +124,35 @@ export function mtgListDb() {
          * @returns {Promise<RowRecord>}
          */
         async addRow(row, listName = '') {
-            row = mapRowForDb(row)
-            row.listName = listName
-            const dbCardList = (await db).transaction(['cardList'], 'readwrite').objectStore('cardList')
-            row.key = await promiseRequest(dbCardList.add(row))
-            await promiseRequest(dbCardList.put(row, row.key))
-            return row
+            try {
+                row = mapRowForDb(row)
+                row.listName = listName
+                const dbCardList = (await db).transaction(['cardList'], 'readwrite').objectStore('cardList')
+                row.key = await promiseRequest(dbCardList.add(row))
+                await promiseRequest(dbCardList.put(row, row.key))
+                return row
+            } catch (e) {
+                console.log('Error adding row')
+                console.error(e)
+            }
         },
         /**
          * @param {RowRecord} row
          * @returns {Promise<void>}
          */
         async updateRow(row) {
-            row = mapRowForDb(row)
-            await promiseRequest((await db).transaction(['cardList'], 'readwrite').objectStore('cardList').put(row, row.key))
+            try {
+                row = mapRowForDb(row)
+                const cardListStore = (await db).transaction(['cardList'], 'readwrite')
+                    .objectStore('cardList')
+                await promiseRequest(cardListStore.put(row, row.key))
+            } catch (e) {
+                console.log('error updating row')
+                console.error(e)
+            }
         },
         async removeRow(key) {
+            console.error('removing row', key)
             await promiseRequest((await db).transaction(['cardList'], 'readwrite').objectStore('cardList').delete(key))
         },
         async clearList(listName = '') {

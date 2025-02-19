@@ -1,9 +1,9 @@
-@props(['title', 'skipSiteName' => false, 'remSize' => null])
+@props(['title', 'skipSiteName' => false, 'remSize' => null, 'scripts' => []])
 <!doctype html>
 <html @if($remSize) style="font-size: {{ $remSize }}" @endif>
 <head>
     <title>{{ $title ?? '' }}{{ $title && !$skipSiteName ? ' | ' : '' }}{{ !$skipSiteName ? 'Krisalis.@' : '' }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', ...$scripts])
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
 <body>
@@ -63,5 +63,6 @@
     @stack('icon')
 </svg>
 @stack('scripts')
+@vite(['resources/js/app.js'])
 </body>
 </html>

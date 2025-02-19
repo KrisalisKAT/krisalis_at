@@ -207,8 +207,9 @@
     </div>
     <x-mtgLister.setsData/>
     @push('scripts')
-        <script>
-            {!! Vite::content('resources/js/mtg-lister.js') !!}
-        </script>
+        @vite(['resources/js/mtg-lister.js'])
+{{--        <script>--}}
+{{--            { !! Vite::content('resources/js/mtg-lister.js') !! }--}}
+{{--        </script>--}}
     @endpush
 </x-layout>

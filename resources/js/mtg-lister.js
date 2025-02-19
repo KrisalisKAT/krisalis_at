@@ -1,4 +1,5 @@
-import {initDb, promiseRequest} from './db.js'
+import {cardKey} from 'js/mtgLister/utils.js'
+import {mtgListDb} from 'js/mtgLister/mtgListDb.js'
 
 /** @typedef {{setNum?: string, name: string, set: string, num: number, finishes: string[], imageStatus: string, imageUri: string, savedAt?: number}} mtgCard */
 /** @typedef {{set: string, num: number}} CardRef */
@@ -14,162 +15,18 @@ import {initDb, promiseRequest} from './db.js'
 
 /** @returns {MtgListerApp} */
 function mtgLister() {
-    /**
-     * @param cardRef {CardRef}
-     * @returns {string}
-     */
-    function cardKey(cardRef) {
-        const {set, num} = cardRef
-        return `${set} ${num}`
-    }
-
-    /**
-     * @param card {CardRef}
-     * @returns {CardRef}
-     */
-    function asCardRef(card) {
-        const {set, num} = card
-        return {set, num}
-    }
-
-    function mtgListDb() {
-        const db = initDb('mtg-lister', 1, (db) => {
-            db.createObjectStore('cards', {keyPath: 'setNum'})
-
-            const cardListStore = db.createObjectStore('cardList', {autoIncrement: true})
-            cardListStore.createIndex('listName', 'listName', {unique: false});
-
-            db.createObjectStore('options', {keyPath: 'name'})
-        })
-
-        /** @type {{save(mtgCard): Promise<void>, get(CardRef): Promise<mtgCard|null>}} */
-        const cards = {
-            async save(card) {
-                card.setNum = card.setNum || cardKey(card)
-                card.savedAt = Date.now()
-
-                await promiseRequest((await db).transaction(['cards'], 'readwrite')
-                    .objectStore('cards').put(card))
-            },
-            async get(cardRef) {
-                try {
-                    return promiseRequest(
-                        (await db).transaction(['cards'])
-                            .objectStore('cards')
-                            .get(cardKey(cardRef)))
-                } catch (e) {
-                    return null
-                }
-            },
-        }
-
-        /**
-         * @param {dbRowRecordable} row
-         * @returns {RowRecord}
-         */
-        function mapRowForDb(row) {
-            const {key = null, listName = null, search = null, foil = false} = row
-
-            return {
-                key: key || undefined,
-                listName: listName || undefined,
-                search: search ? {q: search.q, results: search.results?.map(asCardRef)} : undefined,
-                card: row.card ? asCardRef(row.card) : null,
-                foil,
-            }
-        }
-
-        /** @type {{getLists(): Promise<string[]>, getList(string): Promise<RowRecord[]>, addRow(dbRowRecordable, string): Promise<RowRecord>, updateRow(RowRecord): Promise<void>, removeRow(number): Promise<void>}} */
-        const lists = {
-            /**
-             * @returns {Promise<string[]>}
-             */
-            async getLists() {
-                return promiseRequest(
-                    (await db).transaction(['cardList'])
-                        .objectStore('cardList')
-                        .index('listName')
-                        .getAllKeys())
-            },
-            /**
-             * @param name {string}
-             * @returns {Promise<RowRecord[]>}
-             */
-            async getList(name = '') {
-                return promiseRequest(
-                    (await db).transaction(['cardList'])
-                        .objectStore('cardList')
-                        .index('listName')
-                        .getAll(name))
-            },
-            /**
-             * @param row {dbRowRecordable}
-             * @param listName {string}
-             * @returns {Promise<RowRecord>}
-             */
-            async addRow(row, listName = '') {
-                row = mapRowForDb(row)
-                row.listName = listName
-                const dbCardList = (await db).transaction(['cardList'], 'readwrite').objectStore('cardList')
-                row.key = await promiseRequest(dbCardList.add(row))
-                await promiseRequest(dbCardList.put(row, row.key))
-                return row
-            },
-            /**
-             * @param {RowRecord} row
-             * @returns {Promise<void>}
-             */
-            async updateRow(row) {
-                row = mapRowForDb(row)
-                await promiseRequest((await db).transaction(['cardList'], 'readwrite').objectStore('cardList').put(row, row.key))
-            },
-            async removeRow(key) {
-                await promiseRequest((await db).transaction(['cardList'], 'readwrite').objectStore('cardList').delete(key))
-            },
-            async clearList(listName = '') {
-                const mtgDb = await db
-                return new Promise((resolve) => {
-                    const cardListDb = mtgDb.transaction(['cardList'], 'readwrite').objectStore('cardList')
-                    const list = cardListDb.index('listName')
-                    list.openCursor(IDBKeyRange.only(listName)).onsuccess = (event) => {
-                        /** @type IDBCursor */
-                        const cursor = event.target.result
-                        if (cursor) {
-                            cursor.delete()
-                            cursor.continue()
-                        } else {
-                            resolve()
-                        }
-                    }
-                })
-            }
-        }
-        const options = {
-            async get(name, _default = null) {
-                const record = await promiseRequest((await db).transaction(['options']).objectStore('options').get(name))
-                return record?.value || _default
-            },
-            async set(name, value) {
-                await promiseRequest((await db).transaction(['options'], 'readwrite').objectStore('options').put({
-                    name,
-                    value,
-                }))
-            },
-        }
-
-        return {cards, lists, options}
-    }
 
     const db = mtgListDb()
 
-    /** @type {cacheCards} */
-    const cards = Alpine.reactive({
+    const cardCache = Alpine.reactive({})
+    // /** @type {cacheCards} */
+    const cards = {
         /**
          * @param cardRef {CardRef}
          * @returns {mtgCard|null}
          */
         get(cardRef) {
-            return cards[cardKey(cardRef)] || null
+            return cardCache[cardKey(cardRef)] || null
         },
         /**
          * @param card {mtgCard}
@@ -184,7 +41,7 @@ function mtgLister() {
          */
         remember(card) {
             if (card) {
-                cards[cardKey(card)] = card
+                cardCache[cardKey(card)] = card
             }
             return card
         },
@@ -193,9 +50,21 @@ function mtgLister() {
          * @returns {Promise<mtgCard|null>}
          */
         async recall(cardRef) {
-            return this.get(cardRef) || this.remember(await db.cards.get(cardRef))
+            let card = this.get(cardRef)
+            if (card) return card
+
+            card = await db.cards.get(cardRef)
+            if (card) {
+                console.info('card recalled', card)
+            }
+            return this.remember(card)
         },
-    })
+
+        async recallList(cardRefs) {
+            const cards = await db.cards.getList(cardRefs.filter(ref => !this.get(ref)))
+            cards.forEach(card => this.remember(card))
+        }
+    }
 
     /** @returns {Promise<string[]>} */
     async function getLists() {
@@ -282,28 +151,20 @@ function mtgLister() {
              * @returns {Promise<void>}
              */
             async populate() {
-                await Promise.allSettled((await db.lists.getList(name)).map(
-                    /**
-                     * @param row {RowRecord}
-                     * @returns {Promise<void>}
-                     */
-                    async (row) => {
-                        if (row.card) {
-                            await cards.recall(row.card)
-                        } else if (row.search?.results) {
-                            await Promise.allSettled(row.search.results.map(
-                                /**
-                                 * @param result {CardRef}
-                                 * @returns {Promise<void>}
-                                 */
-                                async result => {
-                                    await cards.recall(result)
-                                }),
-                            )
-                        }
-                        this.rows.push(invigorateRow(row))
-                    }),
-                )
+                const list = (await db.lists.getList(name)).map(row => invigorateRow(row))
+                this.rows.push(...list)
+                const cardKeyCollector = {}
+                list.forEach(row => {
+                    if (row.card) {
+                        cardKeyCollector[cardKey(row.card)] = row.card
+                    } else if (row.search?.results) {
+                        row.search.results.forEach(result => {
+                            cardKeyCollector[cardKey(result)] = row.card
+                        })
+                    }
+                })
+
+                await cards.recallList(Object.values(cardKeyCollector))
             },
         }
     }
@@ -646,8 +507,9 @@ document.addEventListener('alpine:init', () => {
                     card = this.prepareScryfallCard(await this.scryfall(`cards/${cardRef.set}/${cardRef.num}`))
                     await app.cards.set(card)
                 } catch (error) {
+                    console.log('Error fetching and/or storing card', {ref: cardRef, result: card || null, row})
                     row.error = error
-                    console.error(row)
+                    console.error(error)
                     await this.list.removeRowRecord(row)
                 }
             }
@@ -703,7 +565,7 @@ document.addEventListener('alpine:init', () => {
             } else if (results) {
                 row.search.results = results
             }
-            if (foil) {
+            if (foil !== null) {
                 row.foil = foil
             }
             await this.list.update(row)
@@ -746,6 +608,7 @@ document.addEventListener('alpine:init', () => {
                 finishes,
                 imageStatus: image_status,
                 imageUri,
+                fetchedAt: Date.now()
             }
         },
     }))

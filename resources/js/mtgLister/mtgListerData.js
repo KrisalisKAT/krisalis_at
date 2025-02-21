@@ -1,6 +1,8 @@
 import {mtgListDb} from 'js/mtgLister/mtgListDb.js'
 import {cardKey} from 'js/mtgLister/utils.js'
+import 'js/mtgLister/types.js'
 
+/** @returns {MtgListerData} */
 export function mtgListerData() {
 
     const db = mtgListDb()

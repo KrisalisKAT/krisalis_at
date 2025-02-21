@@ -54,11 +54,11 @@
                     </div>
                 </div>
                 <ul class="flex flex-col items-stretch">
-                    <template x-for="row in list.byNew">
+                    <template x-for="(row, index) in list.byNew">
                         <li class="flex gap-x-6" :key="row.key">
                             <button class="btn btn-sm text-xl tooltip flex"
                                     data-tip="Add Another"
-                                    :class="{ 'btn-outline border-primary': action.do === '++' && actionRowKey === row.key }"
+                                    :class="{ 'btn-outline border-primary': this.rowActionIndex === index && action.do === '++' }"
                                     :disabled="!row.card?.card && !row.results"
                                     @click="addAnother(row)"><span class="-mt-1.5">+</span></button>
                             <template x-if="row.card?.card">
@@ -67,7 +67,7 @@
                                     <span class="grow">
                                         <a href="#preview_modal" class="p-0 tooltip"
                                            data-tip="view card (v)"
-                                           :class="{ 'border-b border-primary -mb-px': action.do === 'vC' && actionRowKey === row.key }"
+                                           :class="{ 'border-b border-primary -mb-px': this.rowActionIndex === index && action.do === 'vC' }"
                                            @click.prevent="$dispatch('view-card', row.card.card)">
                                             <span class="inline-block"
                                                   x-text="row.card.card.name.split('//')[0]+(row.card.card.name.split('//').length > 1 ? ' //' : '')"></span>
@@ -79,7 +79,7 @@
                                     </span>
                                     <span>
                                         <span x-text="row.card.set.toUpperCase()"
-                                              :class="{'text-primary': actionRowKey === row.key
+                                              :class="{'text-primary': this.rowActionIndex === index
                                                     && action.usePrev && (action.do === '+' || action.do === 'l+')}"
                                               class="tooltip" :data-tip="setName(row.card.set)"></span>
                                         <span x-text="padCardNum(row.card)"></span>
@@ -88,7 +88,7 @@
                                             :data-tip="row.foil ? 'foil' : 'not foil'"
                                             :class="{
                                                 'opacity-30': !row.foil,
-                                                'text-primary': action.do === 'f' && actionRowKey === row.key
+                                                'text-primary': this.rowActionIndex === index && action.do === 'f'
                                             }"
                                             @click="updateRow(row, {foil: !row.foil})">
                                         <x-icon.sparkles size="size-5"/>
@@ -108,7 +108,7 @@
                                     </span>
                                     <a href="#select_modal"
                                        x-show="row.search?.results"
-                                       :class="{ 'border-b border-primary -mb-px': action.do === 'vR' && actionRowKey === row.key }"
+                                       :class="{ 'border-b border-primary -mb-px': this.rowActionIndex === index && action.do === 'vR' }"
                                        @click.prevent="$dispatch('view-results', row)">
                                         <span x-text="`${row.search?.results?.length} cards found`"></span>
                                         <sup>v</sup>
@@ -116,7 +116,7 @@
                                 </div>
                             </template>
                             <button class="btn btn-sm text-xl flex"
-                                    :class="{ 'btn-outline border-primary': action.do === 'x' && actionRowKey === row.key }"
+                                    :class="{ 'btn-outline border-primary': this.rowActionIndex === index && action.do === 'x' }"
                                     @click="list.remove(row)"><span class="-mt-1.5">x</span></button>
                         </li>
                     </template>
@@ -208,8 +208,5 @@
     <x-mtgLister.setsData/>
     @push('scripts')
         @vite(['resources/js/mtg-lister.js'])
-{{--        <script>--}}
-{{--            { !! Vite::content('resources/js/mtg-lister.js') !! }--}}
-{{--        </script>--}}
     @endpush
 </x-layout>

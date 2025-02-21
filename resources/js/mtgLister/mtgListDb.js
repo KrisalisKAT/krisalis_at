@@ -1,5 +1,6 @@
 import {initDb, promiseRequest} from 'js/db.js'
 import {asCardRef, cardKey} from 'js/mtgLister/utils.js'
+import 'js/mtgLister/types.js'
 
 export function mtgListDb() {
     const db = initDb('mtg-lister', 1, (db) => {

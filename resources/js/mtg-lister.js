@@ -41,12 +41,6 @@ document.addEventListener('alpine:init', () => {
             return this.list.byNew[this.rowActionIndex] || null
         },
         /**
-         * @returns {number|null}
-         */
-        get actionRowKey() {
-            return this.actionRow?.key
-        },
-        /**
          * @returns {string|null}
          */
         get setCodeHint() {

@@ -6,7 +6,7 @@
     @vite(['resources/css/app.css', ...$scripts])
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body>
+<body {{$attributes}}>
 {{ $slot }}
 
 <div class="absolute top-1 right-1">
@@ -59,9 +59,11 @@
         </svg>
     </label>
 </div>
-<svg xmlns="http://www.w3.org/2000/svg">
-    @stack('icon')
-</svg>
+<div class="hidden size-[0]">
+    <svg xmlns="http://www.w3.org/2000/svg">
+        @stack('icon')
+    </svg>
+</div>
 @stack('scripts')
 @vite(['resources/js/app.js'])
 </body>

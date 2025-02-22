@@ -43,19 +43,13 @@ export function mtgListerData() {
          * @returns {Promise<mtgCard|null>}
          */
         async recall(cardRef) {
-            let card = this.get(cardRef)
-            if (card) return card
-
-            card = await db.cards.get(cardRef)
-            if (card) {
-                console.info('card recalled', card)
-            }
-            return this.remember(card)
+            return (await this.recallList([cardRef]))[0]
         },
 
         async recallList(cardRefs) {
             const cards = await db.cards.getList(cardRefs.filter(ref => !this.get(ref)))
             cards.forEach(card => this.remember(card))
+            return cards
         }
     }
 
@@ -89,9 +83,34 @@ export function mtgListerData() {
             search: row.search ? {q: row.search.q, results: row.search.results?.map(cardPop)} : undefined,
             card: row.card ? cardPop(row.card) : null,
             error: null,
+            loading: false,
             get hasError() {
                 return Boolean(this.error)
             },
+            /**
+             * @param {CardRef} card
+             * @returns {Promise<void>}
+             */
+            async setCard(card) {
+                this.card = cardPop(card)
+                if (this.search) this.search = null
+                await db.lists.updateRow(row)
+            },
+            /**
+             * @returns {Promise<void>}
+             */
+            async toggleFoil() {
+                this.foil = !this.foil
+                await db.lists.updateRow(row)
+            },
+            /**
+             * @param {CardRef[]} results
+             * @returns {Promise<void>}
+             */
+            async setSearchResults(results) {
+                this.search.results = results.map(cardPop)
+                await db.lists.updateRow(row)
+            }
         }
     }
 
@@ -146,19 +165,31 @@ export function mtgListerData() {
             async populate() {
                 const dbList = await db.lists.getList(name)
                 const list = dbList.map(row => invigorateRow(row))
+                const initialIndex = this.rows.length
                 this.rows.push(...list)
                 const cardKeyCollector = {}
                 list.forEach(row => {
                     if (row.card) {
                         cardKeyCollector[cardKey(row.card)] = row.card
-                    } else if (row.search?.results) {
-                        row.search.results.forEach(result => {
-                            cardKeyCollector[cardKey(result)] = result
-                        })
+                    } else if (row.search) {
+                        if (row.search.results) {
+                            row.search.results.forEach(result => {
+                                cardKeyCollector[cardKey(result)] = result
+                            })
+                        } else {
+                            row.error = 'Search incomplete'
+                        }
                     }
                 })
-
                 await cards.recallList(Object.values(cardKeyCollector))
+
+                for (let i = initialIndex; i < this.rows.length; i++) {
+                    let row = this.rows[i]
+                    if (row.card && !row.card.card) {
+                        row.error = 'Card unknown'
+                        console.log('Unknown card in list', {cardRef: cardPop(row.card), row})
+                    }
+                }
             },
         }
     }

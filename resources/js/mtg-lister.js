@@ -190,8 +190,13 @@ document.addEventListener('alpine:init', () => {
             const search = this.search.trim().toLowerCase()
 
             if (!search) {
-                if (card || row?.search?.results) return {do: '++', row}
-                return {do: null}
+                if (!row) return {do: null}
+                if (card || row.search?.results) return {do: '++', row}
+
+                if (row.error) {
+                    if (row.card) return {do: '🔁', row}
+                    if (row.search) return {do: '✏️', search: row.search.q, row}
+                }
             }
 
             if (search.length === 1) {
@@ -235,6 +240,10 @@ document.addEventListener('alpine:init', () => {
                     return 'Search Card'
                 case '+':
                     return 'Add Card'
+                case '🔁':
+                    return 'Retry Fetch'
+                case '✏️':
+                    return 'Edit Search'
                 case '++':
                     return 'Add Another'
                 case 'vC':
@@ -270,43 +279,44 @@ document.addEventListener('alpine:init', () => {
 
         mainAction(dispatch) {
             const action = this.action
-            switch (action.do) {
-                case null:
-                    return
-                case '+':
-                    this.fetchCard(action.match.card, action.match.foil).then()
-                    break
-                case 's':
-                    this.searchCard(action.search).then()
-                    break
-                case '++':
-                    this.addAnother(action.row).then()
-                    break
-                case 'vC':
-                    dispatch('view-card', action.row.card.card)
-                    break
-                case 'vR':
-                    dispatch('view-results', action.row)
-                    break
-                case 'f':
-                    this.updateRow(action.row, {foil: !action.row.foil}).then()
-                    break
-                case 'l+':
-                    this.setCodeLock = action.setCode
-                    break
-                case 'l-':
-                    this.setCodeLock = null
-                    break
-                case 'x':
-                    this.list.remove(action.row).then()
-                    break
-                case '?':
-                    dispatch('open-help')
-                    break
-            }
+            if (action.do === null) return
 
             this.resetInputs()
             dispatch('reset-set-search')
+
+            switch (action.do) {
+                case '+':
+                    return this.fetchCard(action.match.card, action.match.foil)
+                case 's':
+                    return this.searchCard(action.search)
+                case '🔁':
+                    return this.retryFetchCard(action.row)
+                case '✏️':
+                    this.search = action.search
+                    return this.removeRow(action.row)
+                case '++':
+                    return this.addAnother(action.row)
+                case 'vC':
+                    dispatch('view-card', action.row.card.card)
+                    return
+                case 'vR':
+                    dispatch('view-results', action.row)
+                    console.log('view-results')
+                    return
+                case 'f':
+                    return action.row.toggleFoil()
+                case 'l+':
+                    this.setCodeLock = action.setCode
+                    return
+                case 'l-':
+                    this.setCodeLock = null
+                    return
+                case 'x':
+                    return this.list.remove(action.row)
+                case '?':
+                    dispatch('open-help')
+                    return
+            }
         },
         /**
          * @param {CardRef} cardRef
@@ -320,18 +330,36 @@ document.addEventListener('alpine:init', () => {
             if (!card) {
                 card = await app.cards.recall(row.card)
             }
-            const aWeekInMs = 1000 * 60 * 60 * 24 * 7
-            if (!card || card.savedAt < Date.now() - aWeekInMs) {
-                try {
-                    card = this.prepareScryfallCard(await this.scryfall(`cards/${cardRef.set}/${cardRef.num}`))
-                    await app.cards.set(card)
-                } catch (error) {
-                    console.log('Error fetching and/or storing card', {ref: cardRef, result: card || null, row})
-                    row.error = error
-                    console.error(error)
-                    await this.list.removeRowRecord(row)
-                }
+            const lastCardDataChange = 1740248073222 // 2025-02-22 added backFaceUri
+            const aWeekAgo = Date.now() - (1000 * 60 * 60 * 24 * 7)
+            if (!card || card.fetchedAt < Math.max(lastCardDataChange, aWeekAgo)) {
+                await this.fetchAndStoreCard(row)
             }
+        },
+        /**
+         * @param {ActiveRowRecord} row
+         * @returns {Promise<void>}
+         */
+        async fetchAndStoreCard(row) {
+            const cardRef = row.card
+            let card = null
+            try {
+                row.loading = true
+                card = this.prepareScryfallCard(await this.scryfall(`cards/${cardRef.set}/${cardRef.num}`))
+            } catch (error) {
+                row.error = error.message === '404' ? 'Card not found' : error.message
+                console.log('Error fetching and/or storing card', {ref: cardRef, result: card || null, row})
+                console.error(error)
+            }
+            row.loading = false
+            if (card) await app.cards.set(card)
+        },
+        /**
+         * @param {ActiveRowRecord} row
+         */
+        async retryFetchCard(row){
+            row.error = null
+            await this.fetchAndStoreCard(row)
         },
         /**
          * @param {string} search
@@ -344,25 +372,30 @@ document.addEventListener('alpine:init', () => {
             query.set('unique', 'prints')
             query.set('order', 'released')
 
+            let results
+            row.loading = true
             try {
-                let results = await this.scryfall(`cards/search?${query.toString()}`)
-                /** @type CardPop[] */
-                results = await Promise.all(results.data.map(card => {
-                    card = this.prepareScryfallCard(card)
-                    return app.cards.set(card).then(() => app.cardPop(card))
-                }))
-                if (results.length === 1) {
-                    console.log('updating row with single result', results)
-                    await this.updateRow(row, {card: results[0]})
-                } else {
-                    console.log('updating row with results list', results)
-                    await this.updateRow(row, {results})
-                }
+                results = await this.scryfall(`cards/search?${query.toString()}`)
             } catch (error) {
-                row.error = error
-                console.error(row)
-                await this.list.removeRowRecord(row)
+                row.error = error.message === '404' ? 'No results' : error.message
+                console.log('Error searching card', {results}, row)
+                console.error(error)
             }
+            row.loading = false
+            if (!results) return
+
+            const preparedCards = results.data.map(card => this.prepareScryfallCard(card))
+            await app.cards.setList(preparedCards)
+            if (results.length === 1) {
+                await row.setCard(preparedCards[0])
+            } else {
+                await row.setSearchResults(preparedCards)
+            }
+        },
+        setActionRow(rowIndex) {
+            this.rowActionIndex = Math.max(Math.min(rowIndex, this.list.rows.length - 1), 0)
+            document.getElementById('cardsList').children[this.rowActionIndex]
+                .scrollIntoView({block: 'center', behavior: 'smooth'})
         },
         /**
          * @param {ActiveRowRecord} row
@@ -411,7 +444,8 @@ document.addEventListener('alpine:init', () => {
         async scryfall(...args) {
             const response = await scryfallService(...args)
             if (!response.ok) {
-                throw new Error(`Response status: ${response.status}`);
+                console.error({response, body: await response.json().catch()})
+                throw new Error(response.status === 404 ? '404' : `Response status: ${response.status}`);
             }
             return await response.json()
         },
@@ -422,6 +456,7 @@ document.addEventListener('alpine:init', () => {
         prepareScryfallCard(card) {
             const {name, set, collector_number, finishes, image_status, image_uris = null, card_faces = []} = card
             const imageUri = image_uris?.png || card_faces[0]?.image_uris?.png || null
+            const backFaceUri = card_faces[1]?.image_uris?.png || null
             return {
                 name,
                 set,
@@ -429,6 +464,7 @@ document.addEventListener('alpine:init', () => {
                 finishes,
                 imageStatus: image_status,
                 imageUri,
+                backFaceUri,
                 fetchedAt: Date.now()
             }
         },

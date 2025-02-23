@@ -154,18 +154,14 @@ document.addEventListener('alpine:init', () => {
 
             const usePrev = parts[0] === '<'
             if (usePrev) {
-                if (this.actionRow?.set) {
-                    parts[0] = this.actionRow.set
+                if (this.actionRow?.card?.set) {
+                    parts[0] = this.actionRow.card.set
                 } else {
                     return null
                 }
             }
 
-            const set = this.setByCode(
-                parts[0] === '<' && this.actionRow?.set
-                    ? this.actionRow.set
-                    : parts[0],
-            )
+            const set = this.setByCode(parts[0])
             if (!set) return null
 
             const numberFoil = parts[1].match(/(?<number>\d{1,4})(?<foil>f?)/i)

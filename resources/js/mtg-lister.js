@@ -382,7 +382,7 @@ document.addEventListener('alpine:init', () => {
 
             const preparedCards = results.data.map(card => this.prepareScryfallCard(card))
             await app.cards.setList(preparedCards)
-            if (results.length === 1) {
+            if (preparedCards.length === 1) {
                 await row.setCard(preparedCards[0])
             } else {
                 await row.setSearchResults(preparedCards)

@@ -196,13 +196,12 @@
         </dialog>
         <dialog id="preview_modal" class="modal">
             <template x-if="preview">
-                <div class="modal-box max-w-5xl p-0 flex flex-col items-center">
-                    <div class="flex gap-x-2 items-stretch">
-                        <div><img :src="preview.imageUri" :alt="preview.name"></div>
-                        <div><img x-show="preview.backFaceUri" :src="preview.backFaceUri"
-                                  :alt="preview.name + ' back face'"></div>
+                <div class="modal-box max-w-[90vw] max-h-[90vh] p-0 flex flex-col items-center w-fit">
+                    <div class="max-w-[90vw] max-h-[calc(90vh-24px)] flex justify-center" :class="preview.backFaceUri ? 'aspect-[149/104]' : 'aspect-[149/208]'">
+                        <img :class="preview.backFaceUri ? 'max-w-1/2' : 'max-w-full'" class="max-h-full" :src="preview.imageUri" :alt="preview.name">
+                        <img x-show="preview.backFaceUri" class="max-w-1/2 max-h-full" :src="preview.backFaceUri" :alt="preview.name + ' back face'">
                     </div>
-                    <span x-text="`${setName(preview.set)} ${padCardNum(preview)}`"></span>
+                    <div><span x-text="`${setName(preview.set)} ${padCardNum(preview)}`"></span></div>
                 </div>
             </template>
             <form method="dialog" class="modal-backdrop">

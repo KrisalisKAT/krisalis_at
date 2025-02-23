@@ -3,9 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "concurrently \"npm run vite:dev\" \"npm run build:inline\"",
-        "vite:dev": "vite",
-        "build:inline": "vite build -c vite.inline.config.js --watch"
+        "dev": "vite"
     },
     "devDependencies": {
         "alpinejs": "^3.14.3",
